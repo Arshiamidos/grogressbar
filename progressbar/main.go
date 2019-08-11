@@ -2,6 +2,7 @@ package progressbar
 
 import (
 	"fmt"
+	"sync"
 	"time"
 )
 
@@ -78,19 +79,22 @@ func PrintMultiText(s ...string) string {
 
 }
 func Race(c ...<-chan bool) chan bool {
-	_c := make(chan bool, 1)
+	_c := make(chan bool, len(c))
+	var wg sync.WaitGroup
+	wg.Add(len(c))
 	for _, v := range c {
 		go func(vv <-chan bool) {
-			for {
-				select {
-				case <-vv:
-					_c <- true
-				}
+			if <-vv {
+				_c <- true
+				wg.Done()
 			}
-
 		}(v)
 
 	}
+	go func() {
+		wg.Wait()
+		close(_c)
+	}()
 	return _c
 }
 
